@@ -193,7 +193,7 @@
     <div class="section-header">
       <span class="label-small">Select up to 3 countries</span>
      <span style="display:flex;align-items:center;gap:12px;">
-		<span id="sel-count" class="label-small">3 selected</span>
+		<span id="sel-count" class="label-small">0 selected</span>
 		<button id="clear-btn" onclick="sel=[];update();"
 		style="font-size:11px;font-family:inherit;background:none;border:none;
            color:var(--rws-pink);cursor:pointer;padding:0;font-weight:500;
@@ -345,7 +345,7 @@
     // Some scores exceed 100 (Greece UAI=112, Slovak Rep MAS=110)
     const CHART_MAX = 120;
 
-    let sel   = ['U.S.A.', 'Japan', 'Sweden'];
+    let sel   = [];
     let chart = null;
 
     const dark = () => matchMedia('(prefers-color-scheme:dark)').matches;
@@ -577,14 +577,24 @@
 
     // ── Orchestration ─────────────────────────────────────────────────────────
     function update() {
+      // Render the lightweight DOM-only pieces first so they always appear,
+      // even if Chart.js hits a first-paint timing issue.
       rebuildPills();
-      rebuildChart();
-      rebuildLegend();
       rebuildBars();
+      rebuildLegend();
+      // Wrap the chart call so a Chart.js initialization hiccup can't prevent
+      // the rest of the UI from rendering.
+      try {
+        rebuildChart();
+      } catch (err) {
+        console.error('Chart rebuild failed:', err);
+      }
     }
 
     buildGlossary();
-    update();
+    // Defer the first update until after the browser has completed initial
+    // layout — prevents the radar canvas from racing with the grid columns.
+    requestAnimationFrame(() => update());
 
     matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
       if (chart) {
